@@ -15,11 +15,17 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Water-themed variants
+        water: "bg-gradient-water text-white shadow-water hover:shadow-glow transition-all duration-300 hover:scale-105",
+        ocean: "bg-gradient-ocean text-white shadow-soft hover:shadow-water ripple-effect",
+        hero: "bg-gradient-hero text-white shadow-glow hover:shadow-water border border-white/20 backdrop-blur-sm transition-all duration-500 hover:scale-110",
+        glass: "glass-card text-primary-foreground hover:bg-white/20 transition-all duration-300",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
+        xl: "h-12 rounded-lg px-12 text-base font-semibold",
         icon: "h-10 w-10",
       },
     },

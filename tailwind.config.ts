@@ -22,6 +22,8 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          light: "hsl(var(--primary-light))",
+          dark: "hsl(var(--primary-dark))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -47,16 +49,30 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+        // Water-themed colors
+        water: {
+          blue: "hsl(var(--water-blue))",
+          light: "hsl(var(--water-light))",
+          dark: "hsl(var(--water-dark))",
         },
+        aqua: "hsl(var(--aqua))",
+        "deep-blue": "hsl(var(--deep-blue))",
+        "sky-blue": "hsl(var(--sky-blue))",
+      },
+      backgroundImage: {
+        'gradient-water': 'var(--gradient-water)',
+        'gradient-ocean': 'var(--gradient-ocean)',
+        'gradient-sky': 'var(--gradient-sky)',
+        'gradient-hero': 'var(--gradient-hero)',
+      },
+      boxShadow: {
+        'water': 'var(--shadow-water)',
+        'soft': 'var(--shadow-soft)',
+        'glow': 'var(--shadow-glow)',
+      },
+      transitionTimingFunction: {
+        'smooth': 'var(--transition-smooth)',
+        'bounce': 'var(--transition-bounce)',
       },
       borderRadius: {
         lg: "var(--radius)",
