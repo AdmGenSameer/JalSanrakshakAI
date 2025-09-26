@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import heroImage from '@/assets/hero-water.jpg';
 import Navbar from '@/components/Navbar';
+import SplashScreen from '@/components/SplashScreen';
 
 const Home: React.FC = () => {
   const features = [
@@ -97,13 +98,12 @@ const Home: React.FC = () => {
             </div>
             
             <div className="relative">
-              <div className="relative rounded-2xl overflow-hidden shadow-water">
-                <img 
-                  src={heroImage} 
-                  alt="Rainwater Harvesting System" 
-                  className="w-full h-full object-cover"
+              {/* Interactive Splash Screen */}
+              <div className="relative rounded-2xl overflow-hidden shadow-water h-96">
+                <SplashScreen 
+                  autoPlay={true}
+                  className="w-full h-full"
                 />
-                <div className="absolute inset-0 bg-gradient-water/20" />
               </div>
               
               {/* Floating elements */}

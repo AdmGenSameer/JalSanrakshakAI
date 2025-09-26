@@ -100,6 +100,10 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "rain-fall": "rain-fall 1.5s linear infinite",
+        "water-rise": "water-rise 2s ease-in-out",
+        "bubble-up": "bubble-up 3s ease-in-out infinite",
+        "leaf-grow": "leaf-grow 1s ease-out forwards",
       },
     },
   },
