@@ -81,22 +81,23 @@ const Assessment: React.FC = () => {
   const [geoLoading, setGeoLoading] = useState(false);
   const lastGeocodedRef = useRef<string>('');
 
-  // Geocode helper using Google Geocoding API
+  // Geocode helper using OpenStreetMap Nominatim (no API key required)
   async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
-    const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-    if (!key) {
-      console.warn('Missing VITE_GOOGLE_MAPS_API_KEY');
-      return null;
-    }
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
       const data = await res.json();
-      if (data.status === 'OK' && data.results[0]?.geometry?.location) {
-        const { lat, lng } = data.results[0].geometry.location;
-        return { lat, lng };
+      if (Array.isArray(data) && data.length > 0) {
+        const item = data[0];
+        const lat = parseFloat(item.lat);
+        const lng = parseFloat(item.lon);
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) return { lat, lng };
       }
-      console.warn('Geocoding failed:', data.status);
+      console.warn('Geocoding failed: no results');
       return null;
     } catch (e) {
       console.error('Geocoding error:', e);
@@ -116,10 +117,7 @@ const Assessment: React.FC = () => {
       if (result) {
         setFormData(prev => ({ ...prev, latitude: result.lat, longitude: result.lng }));
         lastGeocodedRef.current = address;
-        toast({
-          title: 'Coordinates detected',
-          description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}`,
-        });
+  toast({ title: 'Coordinates detected', description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}` });
       }
       setGeoLoading(false);
     }, 5000);
@@ -198,9 +196,7 @@ const Assessment: React.FC = () => {
                   className="bg-background/50 resize-none"
                   rows={3}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Coordinates will auto-detect 5s after you stop typing (Google Geocoding).
-                </p>
+                <p className="text-xs text-muted-foreground">Coordinates auto-detect ~5s after you stop typing (OpenStreetMap).</p>
               </div>
               
               <div className="space-y-2">
@@ -478,9 +474,7 @@ const Assessment: React.FC = () => {
                     {geoLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                   </CardTitle>
                   <CardDescription>
-                    {formData.latitude != null && formData.longitude != null
-                      ? 'From Google Geocoding'
-                      : 'Map will appear after coordinates are detected'}
+                    {formData.latitude != null && formData.longitude != null ? 'From OpenStreetMap' : 'Map will appear after coordinates are detected'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

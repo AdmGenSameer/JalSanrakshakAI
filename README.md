@@ -19,11 +19,7 @@ npm run build
 ```
 
 ## Environment variables
-Create a `.env.local` at project root for geocoding:
-
-```
-VITE_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_GEOCODING_API_KEY
-```
+No API key is required for address geocoding (uses OpenStreetMap Nominatim). No special env vars needed.
 
 ## Project structure (key paths)
 - `src/pages/Assessment.tsx` — Main multi-step form page (most edits happen here)
@@ -83,11 +79,11 @@ Leaflet CSS:
 	import 'leaflet/dist/leaflet.css';
 	```
 
-## Geocoding (Google Geocoding API)
+## Geocoding (OpenStreetMap Nominatim)
 File: `src/pages/Assessment.tsx`
 
-- Function `geocodeAddress(address)` calls Google Geocoding using `VITE_GOOGLE_MAPS_API_KEY`.
-- Debounced by 5s after user stops typing in the Location/Address field (inside a `useEffect`).
+- Function `geocodeAddress(address)` calls OSM Nominatim (no key needed).
+- Debounced by ~5s after user stops typing in the Location/Address field (inside a `useEffect`).
 - On success, `formData.latitude` and `formData.longitude` are set.
 - The right sidebar renders the satellite map with those coordinates (read-only) and sends them to Google Earth.
 
@@ -112,8 +108,7 @@ File: `src/components/WaterTank.tsx` and usage in `Assessment.tsx`
 - Map tiles/controls not styled:
 	- Ensure `import 'leaflet/dist/leaflet.css'` exists in `src/main.tsx`.
 - Geocoding not working:
-	- Check `.env.local` has `VITE_GOOGLE_MAPS_API_KEY` and you restarted `npm run dev`.
-	- Verify your Google Cloud project enables Geocoding API and referer restrictions match your dev host.
+		- Nominatim may rate-limit; try again after a short delay or reduce request frequency.
 - Map doesn’t show in sidebar:
 	- It renders only after coordinates are detected. Type a full address and wait ~5s.
 - TypeScript warnings in Map component:
