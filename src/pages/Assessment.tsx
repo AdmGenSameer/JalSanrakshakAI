@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,11 +17,13 @@ import {
   ArrowRight,
   ArrowLeft,
   ExternalLink,
-  Droplets
+  Droplets,
+  Loader2
 } from 'lucide-react';
 import WaterTank from '@/components/WaterTank';
 import Navbar from '@/components/Navbar';
 import MapLocator from '@/components/MapLocator';
+import { useToast } from '@/components/ui/use-toast';
 
 interface FormData {
   name: string;
@@ -55,7 +57,7 @@ const Assessment: React.FC = () => {
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
-  // Compute form completion progress for WaterTank
+  // Compute form completion progress for WaterTank (do not require lat/lng to hit 100%)
   const formCompletion = (() => {
     const checks = [
       !!formData.name.trim(),
@@ -66,8 +68,6 @@ const Assessment: React.FC = () => {
       !!formData.roofType.trim(),
       !!formData.roofAge.toString().trim(),
       !!formData.soilType.trim(),
-      formData.latitude != null,
-      formData.longitude != null,
     ];
     const filled = checks.filter(Boolean).length;
     return (filled / checks.length) * 100;
@@ -76,6 +76,59 @@ const Assessment: React.FC = () => {
   const updateFormData = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const { toast } = useToast();
+  const [geoLoading, setGeoLoading] = useState(false);
+  const lastGeocodedRef = useRef<string>('');
+
+  // Geocode helper using Google Geocoding API
+  async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+    const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+    if (!key) {
+      console.warn('Missing VITE_GOOGLE_MAPS_API_KEY');
+      return null;
+    }
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'OK' && data.results[0]?.geometry?.location) {
+        const { lat, lng } = data.results[0].geometry.location;
+        return { lat, lng };
+      }
+      console.warn('Geocoding failed:', data.status);
+      return null;
+    } catch (e) {
+      console.error('Geocoding error:', e);
+      return null;
+    }
+  }
+
+  // Debounce geocoding by 5 seconds after typing stops
+  useEffect(() => {
+    const address = formData.location.trim();
+    if (!address || address === lastGeocodedRef.current) return;
+    setGeoLoading(true);
+    const t = setTimeout(async () => {
+      // ensure still the same address after debounce
+      if (address !== formData.location.trim()) return;
+      const result = await geocodeAddress(address);
+      if (result) {
+        setFormData(prev => ({ ...prev, latitude: result.lat, longitude: result.lng }));
+        lastGeocodedRef.current = address;
+        toast({
+          title: 'Coordinates detected',
+          description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}`,
+        });
+      }
+      setGeoLoading(false);
+    }, 5000);
+
+    return () => {
+      clearTimeout(t);
+      setGeoLoading(false);
+    };
+  }, [formData.location, toast]);
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -145,6 +198,9 @@ const Assessment: React.FC = () => {
                   className="bg-background/50 resize-none"
                   rows={3}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Coordinates will auto-detect 5s after you stop typing (Google Geocoding).
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -174,20 +230,7 @@ const Assessment: React.FC = () => {
               <CardDescription>Tell us about your roof and available space</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Mini Satellite Map with Locate Me */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <MapPin className="h-4 w-4" /> Verify your location (Satellite)
-                </Label>
-                <MapLocator
-                  height={220}
-                  onLocate={(lat, lng) => {
-                    setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
-                  }}
-                />
-              </div>
-
-              {/* Helper: Google Earth CTA (moved above roof area) */}
+              {/* Helper: Google Earth CTA (above roof area) */}
               <div className="rounded-lg p-4 bg-background/50 border border-dashed">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -329,7 +372,7 @@ const Assessment: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><strong>Name:</strong> {formData.name}</div>
-                <div><strong>Household Members:</strong> {formData.dwellers}</div>
+                <div><strong>Number of dwellers:</strong> {formData.dwellers}</div>
                 <div><strong>Roof Area:</strong> {formData.roofArea} sq.m</div>
                 <div><strong>Open Space:</strong> {formData.openSpace} sq.m</div>
                 <div><strong>Roof Type:</strong> {formData.roofType}</div>
@@ -425,8 +468,38 @@ const Assessment: React.FC = () => {
               </div>
             </div>
 
-            {/* Water Tank Progress Visualization */}
+            {/* Sidebar */}
             <div className="space-y-6">
+              {/* Detected Location Map (appears only when coords available) */}
+              <Card className="glass-card border-0 shadow-glow">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center justify-between">
+                    <span>Detected Location</span>
+                    {geoLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </CardTitle>
+                  <CardDescription>
+                    {formData.latitude != null && formData.longitude != null
+                      ? 'From Google Geocoding'
+                      : 'Map will appear after coordinates are detected'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {formData.latitude != null && formData.longitude != null ? (
+                    <MapLocator
+                      height={220}
+                      position={[formData.latitude, formData.longitude]}
+                      interactive={false}
+                      showLocateButton={false}
+                    />
+                  ) : (
+                    <div className="h-[220px] rounded-lg border border-dashed flex items-center justify-center text-sm text-muted-foreground bg-background/50">
+                      Waiting for coordinates…
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Water Tank Progress Visualization */}
               <Card className="glass-card border-0 shadow-glow">
                 <CardHeader className="text-center">
                   <CardTitle className="text-lg flex items-center justify-center gap-2">
@@ -443,18 +516,7 @@ const Assessment: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Quick Tips */}
-              <Card className="glass-card border-0">
-                <CardHeader>
-                  <CardTitle className="text-lg">💡 Quick Tips</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm space-y-2 text-muted-foreground">
-                  <p>• Accurate roof measurements improve calculation precision</p>
-                  <p>• Consider all roof surfaces including garages and sheds</p>
-                  <p>• Newer roofs typically have better water collection efficiency</p>
-                  <p>• Local rainfall data will be automatically fetched based on your location</p>
-                </CardContent>
-              </Card>
+              
             </div>
           </div>
         </div>

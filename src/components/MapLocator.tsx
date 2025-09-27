@@ -47,14 +47,27 @@ function ClickToSet({ onPick }: { onPick: (lat: number, lng: number) => void }) 
 export interface MapLocatorProps {
   height?: number;
   onLocate?: (lat: number, lng: number) => void;
+  // Controlled display position (when provided, component can be read-only)
+  position?: LatLngExpression | null;
+  // Toggle interactions (click/drag) and Locate Me button
+  interactive?: boolean;
+  showLocateButton?: boolean;
 }
 
-const MapLocator: React.FC<MapLocatorProps> = ({ height = 220, onLocate }) => {
+const MapLocator: React.FC<MapLocatorProps> = ({
+  height = 220,
+  onLocate,
+  position: controlledPosition = null,
+  interactive = true,
+  showLocateButton = true,
+}) => {
   const { toast } = useToast();
-  const [position, setPosition] = useState<LatLngExpression | null>(null);
+  const [internalPosition, setInternalPosition] = useState<LatLngExpression | null>(null);
   const [loading, setLoading] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const redPin = useRedPinIcon();
+
+  const displayPosition = controlledPosition ?? internalPosition;
 
   const handleLocate = () => {
     if (!('geolocation' in navigator)) {
@@ -66,7 +79,7 @@ const MapLocator: React.FC<MapLocatorProps> = ({ height = 220, onLocate }) => {
       (pos) => {
         const { latitude, longitude } = pos.coords;
         const latlng: LatLngExpression = [latitude, longitude];
-        setPosition(latlng);
+        setInternalPosition(latlng);
         onLocate?.(latitude, longitude);
         setLoading(false);
       },
@@ -90,42 +103,57 @@ const MapLocator: React.FC<MapLocatorProps> = ({ height = 220, onLocate }) => {
     <Card className="glass-card border-0">
       <CardContent className="pt-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm text-muted-foreground">Satellite view — use "Locate Me" to center on your home</p>
-          <Button size="sm" variant="water" onClick={handleLocate} disabled={loading}>
-            {loading ? 'Locating…' : 'Locate Me'}
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            {interactive && showLocateButton ? 'Satellite view — use "Locate Me" or click/drag pin' : 'Satellite view'}
+          </p>
+          {showLocateButton && interactive && (
+            <Button size="sm" variant="water" onClick={handleLocate} disabled={loading}>
+              {loading ? 'Locating…' : 'Locate Me'}
+            </Button>
+          )}
         </div>
         <div className="rounded-lg overflow-hidden shadow-soft border border-border">
           <AnyMapContainer
-            center={position || [20.5937, 78.9629]}
-            zoom={position ? 16 : 5}
+            center={displayPosition || [20.5937, 78.9629]}
+            zoom={displayPosition ? 16 : 5}
             scrollWheelZoom={false}
             style={{ height }}
             whenCreated={(map) => (mapRef.current = map)}
           >
             <AnyTileLayer attribution={EsriWorldImagery.attribution} url={EsriWorldImagery.url} />
-            <FlyTo center={position} />
-            <ClickToSet onPick={(lat, lng) => { setPosition([lat, lng]); onLocate?.(lat, lng); }} />
-            {position && (
-              <AnyMarker
-                position={position}
-                icon={redPin}
-                draggable
-                eventHandlers={{
-                  dragend: (e: L.LeafletEvent) => {
-                    const m = e.target as L.Marker;
-                    const p = m.getLatLng();
-                    setPosition([p.lat, p.lng]);
-                    onLocate?.(p.lat, p.lng);
-                  },
+            <FlyTo center={displayPosition} />
+            {interactive && (
+              <ClickToSet
+                onPick={(lat, lng) => {
+                  setInternalPosition([lat, lng]);
+                  onLocate?.(lat, lng);
                 }}
+              />
+            )}
+            {displayPosition && (
+              <AnyMarker
+                position={displayPosition}
+                icon={redPin}
+                draggable={interactive}
+                eventHandlers={
+                  interactive
+                    ? {
+                        dragend: (e: L.LeafletEvent) => {
+                          const m = e.target as L.Marker;
+                          const p = m.getLatLng();
+                          setInternalPosition([p.lat, p.lng]);
+                          onLocate?.(p.lat, p.lng);
+                        },
+                      }
+                    : undefined
+                }
               />
             )}
           </AnyMapContainer>
         </div>
-        {position && (
+        {displayPosition && Array.isArray(displayPosition) && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Selected: {Array.isArray(position) ? `${position[0].toFixed(6)}, ${position[1].toFixed(6)}` : ''}
+            Selected: {displayPosition[0].toFixed(6)}, {displayPosition[1].toFixed(6)}
           </p>
         )}
       </CardContent>
