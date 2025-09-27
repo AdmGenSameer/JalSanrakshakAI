@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import WaterTank from '@/components/WaterTank';
 import Navbar from '@/components/Navbar';
+import MapLocator from '@/components/MapLocator';
 
 interface FormData {
   name: string;
@@ -30,6 +31,9 @@ interface FormData {
   openSpace: string;
   roofType: string;
   roofAge: string;
+  soilType: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const Assessment: React.FC = () => {
@@ -42,11 +46,32 @@ const Assessment: React.FC = () => {
     roofArea: '',
     openSpace: '',
     roofType: '',
-    roofAge: ''
+  roofAge: '',
+  soilType: '',
+  latitude: null,
+  longitude: null
   });
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
+
+  // Compute form completion progress for WaterTank
+  const formCompletion = (() => {
+    const checks = [
+      !!formData.name.trim(),
+      !!formData.location.trim(),
+      !!formData.dwellers.toString().trim(),
+      !!formData.roofArea.toString().trim(),
+      !!formData.openSpace.toString().trim(),
+      !!formData.roofType.trim(),
+      !!formData.roofAge.toString().trim(),
+      !!formData.soilType.trim(),
+      formData.latitude != null,
+      formData.longitude != null,
+    ];
+    const filled = checks.filter(Boolean).length;
+    return (filled / checks.length) * 100;
+  })();
 
   const updateFormData = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -71,6 +96,11 @@ const Assessment: React.FC = () => {
   };
 
   const generateGoogleEarthLink = () => {
+    if (formData.latitude != null && formData.longitude != null) {
+      const lat = formData.latitude.toFixed(6);
+      const lng = formData.longitude.toFixed(6);
+      return `https://earth.google.com/web/search/${encodeURIComponent(`${lat}, ${lng}`)}`;
+    }
     if (formData.location) {
       const encodedLocation = encodeURIComponent(formData.location);
       return `https://earth.google.com/web/search/${encodedLocation}`;
@@ -118,7 +148,7 @@ const Assessment: React.FC = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="dwellers" className="text-sm font-medium">Number of Household Members</Label>
+                <Label htmlFor="dwellers" className="text-sm font-medium">Number of dwellers</Label>
                 <Input
                   id="dwellers"
                   type="number"
@@ -127,6 +157,7 @@ const Assessment: React.FC = () => {
                   onChange={(e) => updateFormData('dwellers', e.target.value)}
                   className="bg-background/50"
                 />
+                <p className="text-xs text-red-500">* No. of people living in the house</p>
               </div>
             </CardContent>
           </Card>
@@ -143,6 +174,37 @@ const Assessment: React.FC = () => {
               <CardDescription>Tell us about your roof and available space</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Mini Satellite Map with Locate Me */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> Verify your location (Satellite)
+                </Label>
+                <MapLocator
+                  height={220}
+                  onLocate={(lat, lng) => {
+                    setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+                  }}
+                />
+              </div>
+
+              {/* Helper: Google Earth CTA (moved above roof area) */}
+              <div className="rounded-lg p-4 bg-background/50 border border-dashed">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="font-medium">Don't know your roof area?</p>
+                    <p className="text-sm text-muted-foreground">Open Google Earth to measure your rooftop with the ruler tool.</p>
+                  </div>
+                  <Button
+                    onClick={() => window.open(generateGoogleEarthLink(), '_blank')}
+                    variant="water"
+                    className="inline-flex items-center gap-2"
+                  >
+                    Open Google Earth
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="roofArea" className="text-sm font-medium flex items-center gap-2">
                   Roof Area (sq. meters)
@@ -168,7 +230,7 @@ const Assessment: React.FC = () => {
                   Don't know your roof area? Click "Measure on Google Earth" to calculate it accurately
                 </p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="openSpace" className="text-sm font-medium">Available Open Space (sq. meters)</Label>
                 <Input
@@ -215,6 +277,25 @@ const Assessment: React.FC = () => {
               </div>
               
               <div className="space-y-2">
+                <Label className="text-sm font-medium">Soil Type</Label>
+                <Select value={formData.soilType} onValueChange={(value) => updateFormData('soilType', value)}>
+                  <SelectTrigger className="bg-background/50">
+                    <SelectValue placeholder="Select your soil type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sandy">Sandy</SelectItem>
+                    <SelectItem value="loamy">Loamy</SelectItem>
+                    <SelectItem value="clay">Clay</SelectItem>
+                    <SelectItem value="silty">Silty</SelectItem>
+                    <SelectItem value="peaty">Peaty</SelectItem>
+                    <SelectItem value="chalky">Chalky</SelectItem>
+                    <SelectItem value="rocky">Rocky</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Helps estimate infiltration potential for groundwater recharge.</p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="roofAge" className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   Roof Age (years)
@@ -253,10 +334,16 @@ const Assessment: React.FC = () => {
                 <div><strong>Open Space:</strong> {formData.openSpace} sq.m</div>
                 <div><strong>Roof Type:</strong> {formData.roofType}</div>
                 <div><strong>Roof Age:</strong> {formData.roofAge} years</div>
+                <div><strong>Soil Type:</strong> {formData.soilType}</div>
               </div>
               <div className="pt-4 border-t">
                 <div><strong>Location:</strong></div>
                 <p className="text-sm text-muted-foreground mt-1">{formData.location}</p>
+                {(formData.latitude != null && formData.longitude != null) && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Coordinates: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)} (used for Google Earth)
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -348,10 +435,10 @@ const Assessment: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center space-y-4">
-                  <WaterTank progress={progress} />
+                  <WaterTank progress={formCompletion} />
                   <p className="text-sm text-center text-muted-foreground">
-                    Your assessment is {Math.round(progress)}% complete. 
-                    Keep going to unlock your water savings potential!
+                    Your form is {Math.round(formCompletion)}% complete. 
+                    Fill in more details to improve accuracy.
                   </p>
                 </CardContent>
               </Card>

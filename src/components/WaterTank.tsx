@@ -54,7 +54,7 @@ const WaterTank: React.FC<WaterTankProps> = ({ progress, className = "" }) => {
       </div>
 
       {/* Progress text */}
-      <div className="absolute -bottom-8 left-0 right-0 text-center">
+      <div className="absolute -bottom-8 left-0 right-0 text-center mb-3">
         <span className="text-sm font-medium text-primary">{Math.round(progress)}% Complete</span>
       </div>
 
