@@ -67,7 +67,7 @@ const Assessment: React.FC = () => {
       !!formData.openSpace.toString().trim(),
       !!formData.roofType.trim(),
       !!formData.roofAge.toString().trim(),
-      !!formData.soilType.trim(),
+      // soilType excluded from progress (no current input field)
     ];
     const filled = checks.filter(Boolean).length;
     return (filled / checks.length) * 100;
@@ -105,7 +105,7 @@ const Assessment: React.FC = () => {
     }
   }
 
-  // Debounce geocoding by 5 seconds after typing stops
+  // Debounce geocoding by 3 seconds after typing stops
   useEffect(() => {
     const address = formData.location.trim();
     if (!address || address === lastGeocodedRef.current) return;
@@ -120,7 +120,7 @@ const Assessment: React.FC = () => {
   toast({ title: 'Coordinates detected', description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}` });
       }
       setGeoLoading(false);
-    }, 5000);
+    }, 3000);
 
     return () => {
       clearTimeout(t);
@@ -172,6 +172,7 @@ const Assessment: React.FC = () => {
               <CardDescription>Let's start with some basic details about you and your property</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Full Name */}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
                 <Input
@@ -182,7 +183,22 @@ const Assessment: React.FC = () => {
                   className="bg-background/50"
                 />
               </div>
-              
+
+              {/* Number of dwellers (moved under Full Name) */}
+              <div className="space-y-2">
+                <Label htmlFor="dwellers" className="text-sm font-medium">Number of dwellers</Label>
+                <Input
+                  id="dwellers"
+                  type="number"
+                  placeholder="e.g., 4"
+                  value={formData.dwellers}
+                  onChange={(e) => updateFormData('dwellers', e.target.value)}
+                  className="bg-background/50"
+                />
+                <p className="text-xs text-red-500">* No. of people living in the house</p>
+              </div>
+
+              {/* Location at bottom with inline map when available */}
               <div className="space-y-2">
                 <Label htmlFor="location" className="text-sm font-medium flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
@@ -196,20 +212,17 @@ const Assessment: React.FC = () => {
                   className="bg-background/50 resize-none"
                   rows={3}
                 />
-                <p className="text-xs text-muted-foreground">Coordinates auto-detect ~5s after you stop typing (OpenStreetMap).</p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="dwellers" className="text-sm font-medium">Number of dwellers</Label>
-                <Input
-                  id="dwellers"
-                  type="number"
-                  placeholder="e.g., 4"
-                  value={formData.dwellers}
-                  onChange={(e) => updateFormData('dwellers', e.target.value)}
-                  className="bg-background/50"
-                />
-                <p className="text-xs text-red-500">* No. of people living in the house</p>
+                
+                {formData.latitude != null && formData.longitude != null && (
+                  <div className="pt-2">
+                    <MapLocator
+                      height={220}
+                      position={[formData.latitude, formData.longitude]}
+                      interactive={false}
+                      showLocateButton={false}
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -238,7 +251,7 @@ const Assessment: React.FC = () => {
                     variant="water"
                     className="inline-flex items-center gap-2"
                   >
-                    Open Google Earth
+                    Measure on Google Earth
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
@@ -247,15 +260,7 @@ const Assessment: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="roofArea" className="text-sm font-medium flex items-center gap-2">
                   Roof Area (sq. meters)
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.open(generateGoogleEarthLink(), '_blank')}
-                    className="text-xs text-primary hover:text-primary-dark"
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Measure on Google Earth
-                  </Button>
+                  
                 </Label>
                 <Input
                   id="roofArea"
@@ -280,8 +285,8 @@ const Assessment: React.FC = () => {
                   onChange={(e) => updateFormData('openSpace', e.target.value)}
                   className="bg-background/50"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Space available for installing storage tanks and filtration systems
+                <p className="text-xs text-muted-foreground text-red-600">
+                  * Open Space is the area in which you want Rainwater Harvesting.
                 </p>
               </div>
             </CardContent>
@@ -315,24 +320,6 @@ const Assessment: React.FC = () => {
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Soil Type</Label>
-                <Select value={formData.soilType} onValueChange={(value) => updateFormData('soilType', value)}>
-                  <SelectTrigger className="bg-background/50">
-                    <SelectValue placeholder="Select your soil type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sandy">Sandy</SelectItem>
-                    <SelectItem value="loamy">Loamy</SelectItem>
-                    <SelectItem value="clay">Clay</SelectItem>
-                    <SelectItem value="silty">Silty</SelectItem>
-                    <SelectItem value="peaty">Peaty</SelectItem>
-                    <SelectItem value="chalky">Chalky</SelectItem>
-                    <SelectItem value="rocky">Rocky</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Helps estimate infiltration potential for groundwater recharge.</p>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="roofAge" className="text-sm font-medium flex items-center gap-2">
@@ -373,7 +360,7 @@ const Assessment: React.FC = () => {
                 <div><strong>Open Space:</strong> {formData.openSpace} sq.m</div>
                 <div><strong>Roof Type:</strong> {formData.roofType}</div>
                 <div><strong>Roof Age:</strong> {formData.roofAge} years</div>
-                <div><strong>Soil Type:</strong> {formData.soilType}</div>
+                
               </div>
               <div className="pt-4 border-t">
                 <div><strong>Location:</strong></div>
@@ -466,34 +453,7 @@ const Assessment: React.FC = () => {
 
             {/* Sidebar */}
             <div className="space-y-6">
-              {/* Detected Location Map (appears only when coords available) */}
-              <Card className="glass-card border-0 shadow-glow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    <span>Detected Location</span>
-                    {geoLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                  </CardTitle>
-                  <CardDescription>
-                    {formData.latitude != null && formData.longitude != null ? 'From OpenStreetMap' : 'Map will appear after coordinates are detected'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {formData.latitude != null && formData.longitude != null ? (
-                    <MapLocator
-                      height={220}
-                      position={[formData.latitude, formData.longitude]}
-                      interactive={false}
-                      showLocateButton={false}
-                    />
-                  ) : (
-                    <div className="h-[220px] rounded-lg border border-dashed flex items-center justify-center text-sm text-muted-foreground bg-background/50">
-                      Waiting for coordinates…
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Water Tank Progress Visualization */}
+              {/* Water Tank Progress Visualization (at top) */}
               <Card className="glass-card border-0 shadow-glow">
                 <CardHeader className="text-center">
                   <CardTitle className="text-lg flex items-center justify-center gap-2">
@@ -510,7 +470,19 @@ const Assessment: React.FC = () => {
                 </CardContent>
               </Card>
 
-              
+              {/* Quick Tips below tank */}
+              <Card className="glass-card border-0">
+                <CardHeader>
+                  <CardTitle className="text-lg">Quick Tips</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-2 text-muted-foreground">
+                  <p>• Accurate roof measurements improve calculation precision.</p>
+                  <p>• Consider all roof surfaces including garages and sheds.</p>
+                  <p>• Newer roofs can improve water collection efficiency.</p>
+                  <p>• Location helps auto-fetch local rainfall data.</p>
+                </CardContent>
+              </Card>
+
             </div>
           </div>
         </div>
