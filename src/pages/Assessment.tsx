@@ -162,11 +162,17 @@ const Assessment: React.FC = () => {
   };
 
   const generateGoogleEarthLink = () => {
+    // If we have precise coordinates, construct a direct "fly-to" URL so Earth centers and zooms in
     if (formData.latitude != null && formData.longitude != null) {
       const lat = formData.latitude.toFixed(6);
       const lng = formData.longitude.toFixed(6);
-      return `https://earth.google.com/web/search/${encodeURIComponent(`${lat}, ${lng}`)}`;
+      // Altitude in meters (lower = closer). 150m is a good rooftop-level view.
+      const altitude = 9000;
+      // Google Earth Web camera syntax: @lat,lng,altitude"a",0d,0h,0t,0r
+      // a=altitude, d=distance? (kept 0), h=heading, t=tilt, r=roll — zeros keep a top-down north-facing view
+      return `https://earth.google.com/web/@${lat},${lng},${altitude}a,0d,0h,0t,0r`;
     }
+    // Otherwise, fall back to a text search
     if (formData.location) {
       const encodedLocation = encodeURIComponent(formData.location);
       return `https://earth.google.com/web/search/${encodedLocation}`;

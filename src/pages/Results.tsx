@@ -22,7 +22,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, LineChart, Line, ReferenceLine, PieChart, Pie, Cell, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -86,7 +86,7 @@ const Results: React.FC = () => {
   const stats = {
     annual_harvestable_water: assessment?.annual_harvestable_water || 0,
     installation_cost: assessment?.installation_cost || 0,
-    payback_period: assessment?.payback_period || 0,
+    payback_period: assessment?.payback_period ? Number(assessment.payback_period.toFixed(2)) : 0,
     recommended_structure: assessment?.recommended_structure || '—',
   };
 
@@ -383,14 +383,26 @@ const Results: React.FC = () => {
                                       outerRadius={90}
                                       innerRadius={40}
                                       paddingAngle={2}
+                                      labelLine={false}
+                                      label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
                                     >
                                       {waterBalance.map((entry) => (
                                         <Cell key={entry.key} fill={`var(--color-${entry.key})`} />
                                       ))}
                                     </Pie>
                                     <ChartTooltip content={<ChartTooltipContent />} />
-                                    <ChartLegend content={<ChartLegendContent />} />
                                   </PieChart>
+                                  <div className="flex items-center justify-center gap-4 pt-3 text-xs">
+                                    {waterBalance.map((entry) => (
+                                      <div key={entry.key} className="flex items-center gap-1.5">
+                                        <span
+                                          className="h-2 w-2 rounded-[2px]"
+                                          style={{ backgroundColor: `var(--color-${entry.key})` }}
+                                        />
+                                        <span className="text-muted-foreground">{entry.component}</span>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </ChartContainer>
                               ) : (
                                 <div className="h-64 flex items-center justify-center text-muted-foreground">Water balance data unavailable.</div>
@@ -512,22 +524,22 @@ const Results: React.FC = () => {
                     </div>
                   </CardContent></Card>
 
-                  <Card className="glass-card border-0 shadow-water"><CardHeader><CardTitle>Water Level Trends</CardTitle><CardDescription>Historical trend (illustrative)</CardDescription></CardHeader><CardContent>
+                    <Card className="glass-card border-0 shadow-water"><CardHeader><CardTitle>Water Level Trends</CardTitle><CardDescription>Historical trend (illustrative)</CardDescription></CardHeader><CardContent>
                     {(() => {
                       const years = [2018, 2019, 2020, 2021, 2022, 2023];
                       const base = Number(assessment.water_depth) || groundwaterQuery.data?.depth_to_water || 15;
                       // Simulate a gentle rise in depth (declining water table)
                       const series = years.map((y, i) => ({ year: y, level: +(base + i * 0.7).toFixed(1) }));
                       return (
-                        <ChartContainer config={{ level: { label: 'Water Level (m bgl)', color: 'hsl(var(--primary))' } }} className="h-64">
-                          <LineChart data={series} margin={{ left: 8, right: 8 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="year" />
-                            <YAxis />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Line type="monotone" dataKey="level" stroke="var(--color-level)" dot={true} strokeWidth={2} />
-                          </LineChart>
-                        </ChartContainer>
+                      <ChartContainer config={{ level: { label: 'Water Level (m bgl)', color: 'hsl(var(--primary))' } }} className="h-64">
+                        <LineChart data={series} margin={{ left: 8, right: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="year" label={{ value: 'Year', position: 'insideBottom', offset: -5 }} />
+                        <YAxis label={{ value: 'Water Level (m)', angle: -90, position: 'insideLeft', offset: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="level" stroke="var(--color-level)" dot={true} strokeWidth={2} />
+                        </LineChart>
+                      </ChartContainer>
                       );
                     })()}
                     <div className="mt-3 text-amber-600 text-sm">Water table appears to be declining by ~0.7 m/year. Rainwater harvesting is strongly recommended.</div>
