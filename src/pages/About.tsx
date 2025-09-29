@@ -188,7 +188,7 @@ const About: React.FC = () => {
 
           {/* Footer */}
           <div className="text-center text-xs text-muted-foreground pt-2">
-            <p>Developed for sustainable water management | © 2023 Central Ground Water Board (CGWB)</p>
+            <p>Developed for sustainable water management | © 2025 Team Varun Ventures)</p>
             <p>For technical support: <a href="mailto:support@rwhindia.org" className="underline">support@rwhindia.org</a> | Phone: +91-XXX-XXXX-XXXX</p>
           </div>
         </div>
