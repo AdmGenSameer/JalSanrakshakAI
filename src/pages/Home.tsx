@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,9 @@ import heroImage from '@/assets/hero-water.jpg';
 import Navbar from '@/components/Navbar';
 import SplashScreen from '@/components/SplashScreen';
 
-const Home: React.FC = () => {
+const Home = () => {
+  const [chatbotOpen, setChatbotOpen] = useState(false);
+
   const features = [
     {
       icon: <Calculator className="h-6 w-6" />,
@@ -51,10 +53,96 @@ const Home: React.FC = () => {
     { value: "5 Years", label: "Average Payback" }
   ];
 
+  // Chatbot FAB and iframe styles
+  const chatbotStyles = `
+    #jal-chat-fab {
+      position: fixed;
+      bottom: 40px;
+      right: 20px;
+      width: 64px;
+      height: 64px;
+      z-index: 9999;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 50%;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.24);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 2rem;
+      transition: transform 0.2s ease-in-out;
+    }
+    #jal-chat-fab:hover {
+      transform: scale(1.1);
+    }
+    #jal-chat-iframe-wrapper {
+      display: ${chatbotOpen ? 'block' : 'none'};
+      position: fixed;
+      bottom: 120px;
+      right: 20px;
+      z-index: 10000;
+    }
+    #jal-chat-iframe {
+      width: 400px;
+      height: 600px;
+      border: none;
+      border-radius: 18px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+      background: white;
+    }
+    #close-btn {
+      text-align: right;
+      margin-top: 8px;
+    }
+    #close-btn button {
+      background:#ef4444;
+      color:white;
+      border:none;
+      border-radius:6px;
+      padding: 6px 14px;
+      font-weight:bold;
+      cursor:pointer;
+      transition: background-color 0.2s ease;
+    }
+    #close-btn button:hover {
+      background: #dc2626;
+    }
+  `;
+
   return (
     <div className="min-h-screen bg-gradient-sky">
+
+      {/* Chatbot CSS injection */}
+      <style>{chatbotStyles}</style>
+
+      {/* Chatbot Floating Action Button */}
+      {!chatbotOpen && (
+        <div
+          id="jal-chat-fab"
+          onClick={() => setChatbotOpen(true)}
+          title="Chat with Jal Rakshak AI"
+        >
+          🤖
+        </div>
+      )}
+
+      {/* Chatbot Iframe Popup */}
+      {chatbotOpen && (
+        <div id="jal-chat-iframe-wrapper">
+          <iframe
+            id="jal-chat-iframe"
+            src="https://jal-rakshak-ai-v3.vercel.app/"
+            title="Jal Rakshak AI Chatbot"
+          ></iframe>
+          <div id="close-btn">
+            <button onClick={() => setChatbotOpen(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Main site content (unchanged) */}
       <Navbar />
-      
       {/* Hero Section */}
       <section className="relative pt-20 pb-16 overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
