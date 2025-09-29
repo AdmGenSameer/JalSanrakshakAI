@@ -69,6 +69,10 @@ const Results: React.FC = () => {
   const installationCost = assessment?.installation_cost || 0;
   const annualHarvestable = assessment?.annual_harvestable_water || 0;
   const annualSavings = annualHarvestable * 0.005; // ₹ per year, same logic as Streamlit
+   const potentialSavings = Math.min(
+     annualHarvestable,
+     (assessment?.dwellers || 0) * 150 * 365,
+   );
 
   const costBenefitData = useMemo(() => {
     return Array.from({ length: 10 }, (_, idx) => {
@@ -151,6 +155,7 @@ const Results: React.FC = () => {
                         <div className="flex justify-between"><span>Annual Harvestable Water</span><span className="font-semibold text-primary">{Math.round(assessment.annual_harvestable_water || 0).toLocaleString()}L</span></div>
                         <div className="flex justify-between"><span>Runoff Coefficient</span><span className="font-semibold">{(assessment.runoff_coefficient ?? 0).toFixed(2)}</span></div>
                         <div className="flex items-center gap-2"><span>Annual Rainfall</span><Badge variant="secondary">{Math.round(assessment.annual_rainfall || 0)} mm</Badge></div>
+                         <div className="flex justify-between"><span>Potential Savings</span><span className="font-semibold text-primary">{Math.round(potentialSavings).toLocaleString()} L/year</span></div>
                       </div>
                     </CardContent></Card>
 
@@ -158,7 +163,12 @@ const Results: React.FC = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div><p className="text-sm text-muted-foreground">Soil Type</p><p className="font-semibold">{assessment.soil_type || '—'}</p></div>
                         <div><p className="text-sm text-muted-foreground">Aquifer Type</p><p className="font-semibold">{assessment.aquifer_type || '—'}</p></div>
-                        <div><p className="text-sm text-muted-foreground">Groundwater Depth</p><p className="font-semibold">{assessment.water_depth ? `${assessment.water_depth} m` : '—'}</p></div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Groundwater Depth</p>
+                          <p className="font-semibold">
+                            {assessment.water_depth ? `${Number(assessment.water_depth).toFixed(1)} m` : '—'}
+                          </p>
+                        </div>
                         <div><p className="text-sm text-muted-foreground">Coordinates</p><p className="font-semibold">{assessment.latitude && assessment.longitude ? `${assessment.latitude.toFixed(4)}, ${assessment.longitude.toFixed(4)}` : '—'}</p></div>
                       </div>
                     </CardContent></Card>
@@ -276,23 +286,26 @@ const Results: React.FC = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {costBenefitData.map((row) => {
-                            const breakEven = row.cumulativeSavings >= 0;
-                            return (
-                              <TableRow key={row.year} className={breakEven ? 'bg-emerald-50/30 dark:bg-emerald-950/20' : ''}>
-                                <TableCell>Y{row.year}</TableCell>
-                                <TableCell>₹{Math.round(row.annualSavings).toLocaleString()}</TableCell>
-                                <TableCell>₹{Math.round(row.cumulativeSavings).toLocaleString()}</TableCell>
-                                <TableCell>
-                                  {breakEven ? (
-                                    <span className="text-emerald-600 font-medium">Reached</span>
-                                  ) : (
-                                    <span className="text-muted-foreground">—</span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
+                          {(() => {
+                            const firstBreakEvenYear = costBenefitData.find((d) => d.cumulativeSavings >= 0)?.year ?? null;
+                            return costBenefitData.map((row) => {
+                              const isBreakEvenRow = firstBreakEvenYear !== null && row.year === firstBreakEvenYear;
+                              return (
+                                <TableRow key={row.year} className={isBreakEvenRow ? 'bg-emerald-50/30 dark:bg-emerald-950/20' : ''}>
+                                  <TableCell>Y{row.year}</TableCell>
+                                  <TableCell>₹{Math.round(row.annualSavings).toLocaleString()}</TableCell>
+                                  <TableCell>₹{Math.round(row.cumulativeSavings).toLocaleString()}</TableCell>
+                                  <TableCell>
+                                    {isBreakEvenRow ? (
+                                      <span className="text-emerald-600 font-medium">Y{firstBreakEvenYear}</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            });
+                          })()}
                         </TableBody>
                       </Table>
                     </div>
@@ -365,6 +378,7 @@ const Results: React.FC = () => {
                               </div>
 
                               {waterBalance.some((d) => d.value > 0) ? (
+                                <>
                                 <ChartContainer
                                   config={{
                                     harvest: { label: 'Harvestable', color: 'hsl(var(--chart-1, var(--primary)))' },
@@ -392,18 +406,19 @@ const Results: React.FC = () => {
                                     </Pie>
                                     <ChartTooltip content={<ChartTooltipContent />} />
                                   </PieChart>
-                                  <div className="flex items-center justify-center gap-4 pt-3 text-xs">
-                                    {waterBalance.map((entry) => (
-                                      <div key={entry.key} className="flex items-center gap-1.5">
-                                        <span
-                                          className="h-2 w-2 rounded-[2px]"
-                                          style={{ backgroundColor: `var(--color-${entry.key})` }}
-                                        />
-                                        <span className="text-muted-foreground">{entry.component}</span>
-                                      </div>
-                                    ))}
-                                  </div>
                                 </ChartContainer>
+                                <div className="flex items-center justify-center gap-4 pt-3 text-xs">
+                                  {waterBalance.map((entry) => (
+                                    <div key={entry.key} className="flex items-center gap-1.5">
+                                      <span
+                                        className="h-2 w-2 rounded-[2px]"
+                                        style={{ backgroundColor: `var(--color-${entry.key})` }}
+                                      />
+                                      <span className="text-muted-foreground">{entry.component}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                </>
                               ) : (
                                 <div className="h-64 flex items-center justify-center text-muted-foreground">Water balance data unavailable.</div>
                               )}
@@ -564,7 +579,103 @@ const Results: React.FC = () => {
 
                 {/* About Tab */}
                 <TabsContent value="about" className="space-y-6">
-                  <Card className="glass-card border-0 shadow-water"><CardHeader><CardTitle>About</CardTitle><CardDescription>We will enhance this section later.</CardDescription></CardHeader><CardContent className="space-y-4"><p className="text-muted-foreground">This page visualizes your ML-backed assessment results with a modern UI.</p></CardContent></Card>
+                  {/* About / Project Overview */}
+                  <Card className="glass-card border-0 shadow-water">
+                    <CardHeader>
+                      <CardTitle>About This Tool</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <h3 className="text-lg font-semibold">Project Overview</h3>
+                      <p className="text-muted-foreground">
+                        This Rooftop Rainwater Harvesting Assessment Tool is designed to promote public participation in groundwater
+                        conservation by enabling users to estimate the feasibility of rooftop rainwater harvesting (RTRWH) and
+                        artificial recharge at their locations.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  {/* How it works / Tech stack / Benefits / Data sources */}
+                  <Card className="glass-card border-0 shadow-water">
+                    <CardHeader>
+                      <CardTitle>How It Works & Technology</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid md:grid-cols-2 gap-8">
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="font-semibold mb-2">How It Works</h4>
+                            <ol className="list-decimal pl-5 space-y-1 text-muted-foreground">
+                              <li><span className="text-foreground font-medium">Input Analysis</span>: We analyze your roof characteristics and location</li>
+                              <li><span className="text-foreground font-medium">Data Processing</span>: Fetch local rainfall, soil, and groundwater data</li>
+                              <li><span className="text-foreground font-medium">ML Modeling</span>: Use machine learning to predict optimal solutions</li>
+                              <li><span className="text-foreground font-medium">Recommendations</span>: Provide customized RWH system recommendations</li>
+                              <li><span className="text-foreground font-medium">Economic Analysis</span>: Calculate costs, savings, and payback period</li>
+                            </ol>
+                          </div>
+
+                          <div>
+                            <h4 className="font-semibold mb-2">Technology Stack</h4>
+                            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                              <li><strong className="text-foreground">Frontend</strong>: React + Vite Web Application</li>
+                              <li><strong className="text-foreground">Backend</strong>: FastAPI RESTful API</li>
+                              <li><strong className="text-foreground">Machine Learning</strong>: Scikit-learn models</li>
+                              <li><strong className="text-foreground">Data Storage</strong>: PostgreSQL with PostGIS</li>
+                              <li><strong className="text-foreground">Visualization</strong>: Recharts</li>
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="font-semibold mb-2">Benefits of Rainwater Harvesting</h4>
+                            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                              <li>💧 <strong className="text-foreground">Water Security</strong>: Reduce dependence on municipal supply</li>
+                              <li>💰 <strong className="text-foreground">Cost Savings</strong>: Lower water bills and reduced energy costs</li>
+                              <li>🌱 <strong className="text-foreground">Environmental Protection</strong>: Reduce runoff and recharge groundwater</li>
+                              <li>🏙️ <strong className="text-foreground">Urban Resilience</strong>: Mitigate urban flooding during heavy rains</li>
+                              <li>🌍 <strong className="text-foreground">Climate Adaptation</strong>: Build resilience to climate change impacts</li>
+                            </ul>
+                          </div>
+
+                          <div>
+                            <h4 className="font-semibold mb-2">Data Sources</h4>
+                            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                              <li>Indian Meteorological Department (Rainfall data)</li>
+                              <li>Central Ground Water Board (Groundwater data)</li>
+                              <li>National Bureau of Soil Survey (Soil data)</li>
+                              <li>OpenStreetMap (Geocoding services)</li>
+                              <li>Research publications and field studies</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Disclaimer */}
+                  <Card className="glass-card border-0 shadow-water">
+                    <CardHeader>
+                      <CardTitle>Disclaimer</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-md border border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20 p-4 text-sm text-amber-800 dark:text-amber-200">
+                        <p>
+                          This tool provides preliminary estimates based on standard parameters and available data. For detailed design and
+                          implementation, consult with certified rainwater harvesting professionals. Actual results may vary based on local
+                          conditions, construction quality, and maintenance practices.
+                        </p>
+                        <p className="mt-2">
+                          Always check local regulations and obtain necessary permits before implementing any rainwater harvesting system.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Footer */}
+                  <div className="text-center text-xs text-muted-foreground pt-2">
+                    <p>Developed for sustainable water management | © 2023 Central Ground Water Board (CGWB)</p>
+                    <p>For technical support: support@rwhindia.org | Phone: +91-XXX-XXXX-XXXX</p>
+                  </div>
                 </TabsContent>
               </Tabs>
             </>
