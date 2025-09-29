@@ -24,6 +24,7 @@ import WaterTank from '@/components/WaterTank';
 import Navbar from '@/components/Navbar';
 import MapLocator from '@/components/MapLocator';
 import { useToast } from '@/components/ui/use-toast';
+import { api } from '@/lib/api';
 
 interface FormData {
   name: string;
@@ -140,10 +141,24 @@ const Assessment: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
-    // Here you would typically submit to your API
-    console.log('Form submitted:', formData);
-    navigate('/results');
+  const handleSubmit = async () => {
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        dwellers: Number(formData.dwellers) || 0,
+        roof_area: Number(formData.roofArea) || 0,
+        open_space: Number(formData.openSpace) || 0,
+        roof_type: formData.roofType || 'concrete',
+        roof_age: Number(formData.roofAge) || 0,
+      };
+      const created = await api.createAssessment(payload);
+      navigate(`/results?id=${created.id}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Please try again later.';
+      console.error('Submit failed', e);
+      toast({ title: 'Submission failed', description: msg });
+    }
   };
 
   const generateGoogleEarthLink = () => {

@@ -15,7 +15,7 @@ const Navbar: React.FC = () => {
           <Link to="/" className="flex items-center space-x-2 group">
             <img 
               src={waterIcon} 
-              alt="JalRakshak AI" 
+              alt="JalSanrakshak AI" 
               className="h-8 w-8 transition-transform group-hover:scale-110" 
             />
             <span className="text-xl font-bold bg-gradient-water bg-clip-text text-transparent">
