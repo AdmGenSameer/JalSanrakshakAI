@@ -21,7 +21,9 @@ import {
   Loader2,
   MessageCircle,
   X,
-  Send
+  Send,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import WaterTank from '@/components/WaterTank';
 import Navbar from '@/components/Navbar';
@@ -58,19 +60,67 @@ const Assessment: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      content: "Hello! 🌧 I'm here to assist you with your smart rainwater harvesting needs. Whether you have questions about rainwater harvesting, smart calculations, analysis, or need help with free smart assessment, feel free to ask.",
+      content: "Hello! 🌧 I'm here to assist you with your rainwater harvesting assessment. I can help you understand the form fields, calculate measurements, or answer questions about the assessment process. What would you like to know?",
       isUser: false,
       timestamp: new Date()
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Check if TTS is supported
+  const isTtsSupported = () => {
+    return 'speechSynthesis' in window;
+  };
+
+  // Speak text using TTS
+  const speakText = (text: string) => {
+    if (!ttsEnabled || !isTtsSupported()) return;
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 0.8;
+
+    // Select a voice (prefer female voices for better clarity)
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Female') || voice.name.includes('Google UK English Female')
+    ) || voices[0];
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Stop TTS
+  const stopTts = () => {
+    if (isTtsSupported()) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  // Toggle TTS
+  const toggleTts = () => {
+    if (ttsEnabled) {
+      stopTts();
+    }
+    setTtsEnabled(!ttsEnabled);
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -88,14 +138,20 @@ const Assessment: React.FC = () => {
 
     // Simulate AI response (replace with actual API call)
     setTimeout(() => {
-      const aiResponse: ChatMessage = {
+      const aiResponse = getAIResponse(inputMessage.trim());
+      const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: getAIResponse(inputMessage.trim()),
+        content: aiResponse,
         isUser: false,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, aiMessage]);
       setIsLoading(false);
+
+      // Speak the AI response if TTS is enabled
+      if (ttsEnabled) {
+        speakText(aiResponse);
+      }
     }, 1000);
   };
 
@@ -103,46 +159,58 @@ const Assessment: React.FC = () => {
     const lowerMessage = userMessage.toLowerCase();
     
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-      return "Hello! I'm your Jal Rakshak AI assistant. How can I help you with rainwater harvesting today?";
+      return "Hello! I'm your assessment assistant. I can help you fill out this form, understand the questions, or calculate your rainwater harvesting potential. What do you need help with?";
     }
     
-    if (lowerMessage.includes('roof') || lowerMessage.includes('area') || lowerMessage.includes('measure')) {
-      return "For roof area measurement: You can use Google Earth's ruler tool to accurately measure your rooftop area. Just go to Google Earth, find your property, and use the measurement tool to trace your roof outline.";
+    if (lowerMessage.includes('name') || lowerMessage.includes('full name')) {
+      return "The 'Full Name' field is for the primary contact person. This helps us personalize your assessment report. You can enter your complete name as you'd like it to appear on the report.";
+    }
+    
+    if (lowerMessage.includes('dweller') || lowerMessage.includes('people') || lowerMessage.includes('family')) {
+      return "Number of dwellers means how many people live in your house. This helps calculate your daily water consumption and determine the optimal tank size for your needs.";
+    }
+    
+    if (lowerMessage.includes('location') || lowerMessage.includes('address') || lowerMessage.includes('map')) {
+      return "Your location helps us fetch local rainfall data and climate information. Use the 'View on Map' button to verify your coordinates. Accurate location ensures precise water harvesting calculations.";
+    }
+    
+    if (lowerMessage.includes('roof area') || lowerMessage.includes('roof') || lowerMessage.includes('measure')) {
+      return "Roof area is the total surface area that collects rainwater. Use Google Earth's ruler tool (click 'Measure on Google Earth') or estimate based on your house dimensions. Average Indian homes have 80-150 sqm roof area.";
+    }
+    
+    if (lowerMessage.includes('open space') || lowerMessage.includes('space') || lowerMessage.includes('area')) {
+      return "Open space is where you can install rainwater harvesting components like storage tanks, filters, and recharge pits. This helps us design a system that fits your available area.";
+    }
+    
+    if (lowerMessage.includes('roof type') || lowerMessage.includes('concrete') || lowerMessage.includes('tiled')) {
+      return "Different roof materials have different water collection efficiencies. Concrete (90%), Tiled (85%), Metal (95%), Asbestos (80%), Thatched (70%). Choose the material that matches your roof.";
+    }
+    
+    if (lowerMessage.includes('roof age') || lowerMessage.includes('old') || lowerMessage.includes('year')) {
+      return "Roof age helps assess water quality. Newer roofs typically provide cleaner water. Older roofs might need additional filtration. This ensures we recommend the right treatment system.";
+    }
+    
+    if (lowerMessage.includes('calculate') || lowerMessage.includes('potential') || lowerMessage.includes('save')) {
+      return "Based on roof area and local rainfall, we calculate: Harvestable water = Roof Area × Rainfall × Runoff Coefficient. A 100 sqm roof in 1000mm rainfall area can harvest ~75,000 liters annually!";
     }
     
     if (lowerMessage.includes('cost') || lowerMessage.includes('price') || lowerMessage.includes('expensive')) {
-      return "A typical rainwater harvesting system costs between ₹30,000 to ₹80,000 depending on roof area and tank size. The system usually pays for itself in 3-5 years through water bill savings.";
+      return "System costs depend on roof area and tank size: ₹30,000-80,000. Payback period is typically 3-5 years through water bill savings. The assessment will give you exact cost estimates.";
     }
     
-    if (lowerMessage.includes('benefit') || lowerMessage.includes('save') || lowerMessage.includes('advantage')) {
-      return "Rainwater harvesting benefits: Reduces water bills by 40-50%, provides water security, reduces groundwater depletion, improves water quality for non-potable uses, and helps in flood control.";
+    if (lowerMessage.includes('next') || lowerMessage.includes('step') || lowerMessage.includes('continue')) {
+      return "Click 'Next Step' to proceed through the form. You can always go back using 'Previous'. Take your time to provide accurate information for the best recommendations.";
     }
     
-    if (lowerMessage.includes('system') || lowerMessage.includes('install') || lowerMessage.includes('setup')) {
-      return "Basic RWH system components: Catchment area (roof), conveyance system (pipes), filtration unit, storage tank, and distribution system. I can help you design one based on your specific needs!";
-    }
-    
-    if (lowerMessage.includes('assessment') || lowerMessage.includes('calculate') || lowerMessage.includes('form')) {
-      return "The assessment form will calculate your water harvesting potential based on roof area, local rainfall, and household needs. Fill in your details to get personalized recommendations and cost analysis.";
-    }
-    
-    if (lowerMessage.includes('maintenance') || lowerMessage.includes('clean')) {
-      return "Regular maintenance includes: Cleaning roof and gutters quarterly, checking filters monthly, inspecting tanks annually, and ensuring proper drainage. Simple maintenance ensures optimal system performance.";
-    }
-    
-    if (lowerMessage.includes('water quality') || lowerMessage.includes('drink') || lowerMessage.includes('potable')) {
-      return "Rainwater is generally safe for non-potable uses like gardening, flushing, and cleaning. For drinking, it requires proper filtration and treatment. I recommend UV filtration or reverse osmosis for potable use.";
-    }
-    
-    if (lowerMessage.includes('government') || lowerMessage.includes('subsidy') || lowerMessage.includes('scheme')) {
-      return "Many states offer subsidies for RWH systems! Check with your local municipal corporation or water board. Common schemes provide 30-50% subsidy on installation costs to promote water conservation.";
+    if (lowerMessage.includes('submit') || lowerMessage.includes('generate') || lowerMessage.includes('assessment')) {
+      return "After completing all steps, click 'Generate Assessment' to get your personalized report with water savings, system design, cost analysis, and installation guidance.";
     }
     
     if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-      return "You're welcome! Feel free to ask any other questions about rainwater harvesting. I'm here to help you conserve water and save money! 💧";
+      return "You're welcome! I'm here to help you through the assessment. Every detail you provide helps create a more accurate rainwater harvesting plan for your home! 💧";
     }
 
-    return "I understand you're interested in rainwater harvesting! Could you please specify what aspect you'd like to know more about? I can help with system design, cost estimation, maintenance, or explaining the assessment process.";
+    return "I can help you understand the assessment form fields, calculate your water harvesting potential, or explain how the system works. Could you tell me which part you need help with?";
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -190,6 +258,7 @@ const Assessment: React.FC = () => {
   };
 
   const [geoLoading, setGeoLoading] = useState(false);
+  const [showMapPreview, setShowMapPreview] = useState(false);
   const lastGeocodedRef = useRef<string>('');
 
   // Geocode helper using OpenStreetMap Nominatim (no API key required)
@@ -216,28 +285,39 @@ const Assessment: React.FC = () => {
     }
   }
 
-  // Debounce geocoding by 3 seconds after typing stops
+  // Hide map preview when the address changes from the last geocoded string
   useEffect(() => {
     const address = formData.location.trim();
-    if (!address || address === lastGeocodedRef.current) return;
-    setGeoLoading(true);
-    const t = setTimeout(async () => {
-      // ensure still the same address after debounce
-      if (address !== formData.location.trim()) return;
-      const result = await geocodeAddress(address);
-      if (result) {
-        setFormData(prev => ({ ...prev, latitude: result.lat, longitude: result.lng }));
-        lastGeocodedRef.current = address;
-        toast({ title: 'Coordinates detected', description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}` });
-      }
-      setGeoLoading(false);
-    }, 3000);
+    if (address !== lastGeocodedRef.current) {
+      setShowMapPreview(false);
+    }
+  }, [formData.location]);
 
-    return () => {
-      clearTimeout(t);
-      setGeoLoading(false);
-    };
-  }, [formData.location, toast]);
+  // On-demand geocoding when user clicks the button
+  const handleViewOnMap = async () => {
+    const address = formData.location.trim();
+    if (!address) return;
+    // If we already have coords for this exact address, just show the map
+    if (
+      formData.latitude != null &&
+      formData.longitude != null &&
+      lastGeocodedRef.current === address
+    ) {
+      setShowMapPreview(true);
+      return;
+    }
+    setGeoLoading(true);
+    const result = await geocodeAddress(address);
+    setGeoLoading(false);
+    if (result) {
+      setFormData(prev => ({ ...prev, latitude: result.lat, longitude: result.lng }));
+      lastGeocodedRef.current = address;
+      setShowMapPreview(true);
+      toast({ title: 'Location found', description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}` });
+    } else {
+      toast({ title: 'Location not found', description: 'Please refine the address and try again.', variant: 'destructive' });
+    }
+  };
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -344,7 +424,24 @@ const Assessment: React.FC = () => {
                   rows={3}
                 />
                 
-                {formData.latitude != null && formData.longitude != null && (
+                <div className="pt-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="water"
+                    size="sm"
+                    onClick={handleViewOnMap}
+                    disabled={!formData.location.trim() || geoLoading}
+                    className="inline-flex items-center gap-2"
+                  >
+                    {geoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    View on Map
+                  </Button>
+                  {!formData.location.trim() && (
+                    <span className="text-xs text-muted-foreground">Enter an address to enable</span>
+                  )}
+                </div>
+
+                {showMapPreview && formData.latitude != null && formData.longitude != null && (
                   <div className="pt-2">
                     <MapLocator
                       height={220}
@@ -518,7 +615,7 @@ const Assessment: React.FC = () => {
         <button
           className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center cursor-pointer z-50 hover:scale-110 transition-transform duration-200"
           onClick={() => setChatbotOpen(true)}
-          title="Chat with Jal Rakshak AI"
+          title="Chat with Assessment Assistant"
         >
           <MessageCircle className="h-6 w-6" />
         </button>
@@ -530,15 +627,34 @@ const Assessment: React.FC = () => {
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-2xl flex justify-between items-center">
             <div>
-              <h3 className="font-semibold">Jal Rakshak AI Assistant</h3>
-              <p className="text-blue-100 text-sm">Smart Rooftop Monitoring</p>
+              <h3 className="font-semibold">Assessment Assistant</h3>
+              <p className="text-blue-100 text-sm">Get Help with Form Fields</p>
             </div>
-            <button
-              onClick={() => setChatbotOpen(false)}
-              className="text-white hover:bg-blue-700 rounded-full p-1 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* TTS Toggle Button */}
+              {isTtsSupported() && (
+                <button
+                  onClick={toggleTts}
+                  className={`p-2 rounded-full transition-colors ${
+                    ttsEnabled 
+                      ? 'bg-green-500 text-white hover:bg-green-600' 
+                      : 'bg-white/20 text-white hover:bg-white/30'
+                  }`}
+                  title={ttsEnabled ? "Disable Text-to-Speech" : "Enable Text-to-Speech"}
+                >
+                  {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  stopTts();
+                  setChatbotOpen(false);
+                }}
+                className="text-white hover:bg-blue-700 rounded-full p-1 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -583,7 +699,7 @@ const Assessment: React.FC = () => {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
+                placeholder="Ask about form fields..."
                 className="flex-1"
                 disabled={isLoading}
               />
@@ -596,9 +712,16 @@ const Assessment: React.FC = () => {
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-xs text-gray-500 text-center mt-2">
-              Powered by Advanced AI • Ask me about rainwater harvesting
-            </p>
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-gray-500">
+                Ask about form fields and calculations
+              </p>
+              {isTtsSupported() && (
+                <p className="text-xs text-gray-500">
+                  TTS: {ttsEnabled ? 'ON' : 'OFF'}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
