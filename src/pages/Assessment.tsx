@@ -18,7 +18,10 @@ import {
   ArrowLeft,
   ExternalLink,
   Droplets,
-  Loader2
+  Loader2,
+  MessageCircle,
+  X,
+  Send
 } from 'lucide-react';
 import WaterTank from '@/components/WaterTank';
 import Navbar from '@/components/Navbar';
@@ -39,67 +42,115 @@ interface FormData {
   longitude: number | null;
 }
 
+interface ChatMessage {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
 const Assessment: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Chatbot state and styles
+  // Chatbot state
   const [chatbotOpen, setChatbotOpen] = useState(false);
-  const chatbotStyles = `
-    #jal-chat-fab {
-      position: fixed;
-      bottom: 40px;
-      right: 20px;
-      width: 64px;
-      height: 64px;
-      z-index: 9999;
-      background: #2563eb;
-      color: #fff;
-      border-radius: 50%;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.24);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 2rem;
-      transition: transform 0.2s ease-in-out;
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      content: "Hello! 🌧 I'm here to assist you with your smart rainwater harvesting needs. Whether you have questions about rainwater harvesting, smart calculations, analysis, or need help with free smart assessment, feel free to ask.",
+      isUser: false,
+      timestamp: new Date()
     }
-    #jal-chat-fab:hover {
-      transform: scale(1.1);
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: inputMessage.trim(),
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+
+    // Simulate AI response (replace with actual API call)
+    setTimeout(() => {
+      const aiResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: getAIResponse(inputMessage.trim()),
+        isUser: false,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiResponse]);
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  const getAIResponse = (userMessage: string): string => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+      return "Hello! I'm your Jal Rakshak AI assistant. How can I help you with rainwater harvesting today?";
     }
-    #jal-chat-iframe-wrapper {
-      display: ${chatbotOpen ? 'block' : 'none'};
-      position: fixed;
-      bottom: 120px;
-      right: 20px;
-      z-index: 10000;
+    
+    if (lowerMessage.includes('roof') || lowerMessage.includes('area') || lowerMessage.includes('measure')) {
+      return "For roof area measurement: You can use Google Earth's ruler tool to accurately measure your rooftop area. Just go to Google Earth, find your property, and use the measurement tool to trace your roof outline.";
     }
-    #jal-chat-iframe {
-      width: 400px;
-      height: 600px;
-      border: none;
-      border-radius: 18px;
-      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
-      background: white;
+    
+    if (lowerMessage.includes('cost') || lowerMessage.includes('price') || lowerMessage.includes('expensive')) {
+      return "A typical rainwater harvesting system costs between ₹30,000 to ₹80,000 depending on roof area and tank size. The system usually pays for itself in 3-5 years through water bill savings.";
     }
-    #close-btn {
-      text-align: right;
-      margin-top: 8px;
+    
+    if (lowerMessage.includes('benefit') || lowerMessage.includes('save') || lowerMessage.includes('advantage')) {
+      return "Rainwater harvesting benefits: Reduces water bills by 40-50%, provides water security, reduces groundwater depletion, improves water quality for non-potable uses, and helps in flood control.";
     }
-    #close-btn button {
-      background:#ef4444;
-      color:white;
-      border:none;
-      border-radius:6px;
-      padding: 6px 14px;
-      font-weight:bold;
-      cursor:pointer;
-      transition: background-color 0.2s ease;
+    
+    if (lowerMessage.includes('system') || lowerMessage.includes('install') || lowerMessage.includes('setup')) {
+      return "Basic RWH system components: Catchment area (roof), conveyance system (pipes), filtration unit, storage tank, and distribution system. I can help you design one based on your specific needs!";
     }
-    #close-btn button:hover {
-      background: #dc2626;
+    
+    if (lowerMessage.includes('assessment') || lowerMessage.includes('calculate') || lowerMessage.includes('form')) {
+      return "The assessment form will calculate your water harvesting potential based on roof area, local rainfall, and household needs. Fill in your details to get personalized recommendations and cost analysis.";
     }
-  `;
+    
+    if (lowerMessage.includes('maintenance') || lowerMessage.includes('clean')) {
+      return "Regular maintenance includes: Cleaning roof and gutters quarterly, checking filters monthly, inspecting tanks annually, and ensuring proper drainage. Simple maintenance ensures optimal system performance.";
+    }
+    
+    if (lowerMessage.includes('water quality') || lowerMessage.includes('drink') || lowerMessage.includes('potable')) {
+      return "Rainwater is generally safe for non-potable uses like gardening, flushing, and cleaning. For drinking, it requires proper filtration and treatment. I recommend UV filtration or reverse osmosis for potable use.";
+    }
+    
+    if (lowerMessage.includes('government') || lowerMessage.includes('subsidy') || lowerMessage.includes('scheme')) {
+      return "Many states offer subsidies for RWH systems! Check with your local municipal corporation or water board. Common schemes provide 30-50% subsidy on installation costs to promote water conservation.";
+    }
+    
+    if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
+      return "You're welcome! Feel free to ask any other questions about rainwater harvesting. I'm here to help you conserve water and save money! 💧";
+    }
+
+    return "I understand you're interested in rainwater harvesting! Could you please specify what aspect you'd like to know more about? I can help with system design, cost estimation, maintenance, or explaining the assessment process.";
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
@@ -462,27 +513,92 @@ const Assessment: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-sky">
-
-      {/* Chatbot styles and markup */}
-      <style>{chatbotStyles}</style>
+      {/* Chatbot FAB */}
       {!chatbotOpen && (
-        <div
-          id="jal-chat-fab"
+        <button
+          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center cursor-pointer z-50 hover:scale-110 transition-transform duration-200"
           onClick={() => setChatbotOpen(true)}
           title="Chat with Jal Rakshak AI"
         >
-          🤖
-        </div>
+          <MessageCircle className="h-6 w-6" />
+        </button>
       )}
+
+      {/* Chatbot Modal */}
       {chatbotOpen && (
-        <div id="jal-chat-iframe-wrapper">
-          <iframe
-            id="jal-chat-iframe"
-            src="https://jal-rakshak-ai-v3.vercel.app/"
-            title="Jal Rakshak AI Chatbot"
-          />
-          <div id="close-btn">
-            <button onClick={() => setChatbotOpen(false)}>Close</button>
+        <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-white rounded-2xl shadow-2xl z-50 flex flex-col border border-gray-200">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-2xl flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold">Jal Rakshak AI Assistant</h3>
+              <p className="text-blue-100 text-sm">Smart Rooftop Monitoring</p>
+            </div>
+            <button
+              onClick={() => setChatbotOpen(false)}
+              className="text-white hover:bg-blue-700 rounded-full p-1 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                    message.isUser
+                      ? 'bg-blue-600 text-white rounded-br-none'
+                      : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
+                  }`}
+                >
+                  <p className="text-sm">{message.content}</p>
+                  <p className={`text-xs mt-1 ${message.isUser ? 'text-blue-200' : 'text-gray-500'}`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-none px-4 py-2">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="p-4 border-t border-gray-200 bg-white rounded-b-2xl">
+            <div className="flex space-x-2">
+              <Input
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
+                className="flex-1"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputMessage.trim() || isLoading}
+                className="bg-blue-600 hover:bg-blue-700"
+                size="icon"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-2">
+              Powered by Advanced AI • Ask me about rainwater harvesting
+            </p>
           </div>
         </div>
       )}
