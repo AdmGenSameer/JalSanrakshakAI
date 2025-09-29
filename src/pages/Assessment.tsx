@@ -141,12 +141,14 @@ const Assessment: React.FC = () => {
   const [geoLoading, setGeoLoading] = useState(false);
   const lastGeocodedRef = useRef<string>('');
 
-  // Geocode helper using OpenStreetMap Nominatim
+  // Geocode helper using OpenStreetMap Nominatim (no API key required)
   async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
     try {
       const res = await fetch(url, {
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+        },
       });
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -169,6 +171,7 @@ const Assessment: React.FC = () => {
     if (!address || address === lastGeocodedRef.current) return;
     setGeoLoading(true);
     const t = setTimeout(async () => {
+      // ensure still the same address after debounce
       if (address !== formData.location.trim()) return;
       const result = await geocodeAddress(address);
       if (result) {
@@ -185,8 +188,17 @@ const Assessment: React.FC = () => {
     };
   }, [formData.location, toast]);
 
-  const handleNext = () => { if (currentStep < totalSteps) setCurrentStep(currentStep + 1); };
-  const handlePrevious = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
+  const handleNext = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -209,12 +221,17 @@ const Assessment: React.FC = () => {
   };
 
   const generateGoogleEarthLink = () => {
+    // If we have precise coordinates, construct a direct "fly-to" URL so Earth centers and zooms in
     if (formData.latitude != null && formData.longitude != null) {
       const lat = formData.latitude.toFixed(6);
       const lng = formData.longitude.toFixed(6);
+      // Altitude in meters (lower = closer). 150m is a good rooftop-level view.
       const altitude = 9000;
+      // Google Earth Web camera syntax: @lat,lng,altitude"a",0d,0h,0t,0r
+      // a=altitude, d=distance? (kept 0), h=heading, t=tilt, r=roll — zeros keep a top-down north-facing view
       return `https://earth.google.com/web/@${lat},${lng},${altitude}a,0d,0h,0t,0r`;
     }
+    // Otherwise, fall back to a text search
     if (formData.location) {
       const encodedLocation = encodeURIComponent(formData.location);
       return `https://earth.google.com/web/search/${encodedLocation}`;
@@ -235,6 +252,7 @@ const Assessment: React.FC = () => {
               <CardDescription>Let's start with some basic details about you and your property</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Full Name */}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
                 <Input
@@ -246,6 +264,7 @@ const Assessment: React.FC = () => {
                 />
               </div>
 
+              {/* Number of dwellers (moved under Full Name) */}
               <div className="space-y-2">
                 <Label htmlFor="dwellers" className="text-sm font-medium">Number of dwellers</Label>
                 <Input
@@ -259,6 +278,7 @@ const Assessment: React.FC = () => {
                 <p className="text-xs text-red-500">* No. of people living in the house</p>
               </div>
 
+              {/* Location at bottom with inline map when available */}
               <div className="space-y-2">
                 <Label htmlFor="location" className="text-sm font-medium flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
@@ -272,6 +292,7 @@ const Assessment: React.FC = () => {
                   className="bg-background/50 resize-none"
                   rows={3}
                 />
+                
                 {formData.latitude != null && formData.longitude != null && (
                   <div className="pt-2">
                     <MapLocator
@@ -298,6 +319,7 @@ const Assessment: React.FC = () => {
               <CardDescription>Tell us about your roof and available space</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Helper: Google Earth CTA (above roof area) */}
               <div className="rounded-lg p-4 bg-background/50 border border-dashed">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
@@ -318,6 +340,7 @@ const Assessment: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="roofArea" className="text-sm font-medium flex items-center gap-2">
                   Roof Area (sq. meters)
+                  
                 </Label>
                 <Input
                   id="roofArea"
@@ -376,6 +399,7 @@ const Assessment: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+              
 
               <div className="space-y-2">
                 <Label htmlFor="roofAge" className="text-sm font-medium flex items-center gap-2">
@@ -416,6 +440,7 @@ const Assessment: React.FC = () => {
                 <div><strong>Open Space:</strong> {formData.openSpace} sq.m</div>
                 <div><strong>Roof Type:</strong> {formData.roofType}</div>
                 <div><strong>Roof Age:</strong> {formData.roofAge} years</div>
+                
               </div>
               <div className="pt-4 border-t">
                 <div><strong>Location:</strong></div>
@@ -463,9 +488,10 @@ const Assessment: React.FC = () => {
       )}
 
       <Navbar />
-
+      
       <div className="pt-20 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl lg:text-4xl font-bold mb-4">
               Rainwater Harvesting <span className="bg-gradient-water bg-clip-text text-transparent">Assessment</span>
@@ -476,7 +502,9 @@ const Assessment: React.FC = () => {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Form Section */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Progress Header */}
               <Card className="glass-card border-0">
                 <CardContent className="pt-6">
                   <div className="flex justify-between items-center mb-4">
@@ -491,8 +519,10 @@ const Assessment: React.FC = () => {
                 </CardContent>
               </Card>
 
+              {/* Form Step */}
               {renderStep()}
 
+              {/* Navigation */}
               <div className="flex justify-between">
                 <Button
                   variant="outline"
@@ -503,7 +533,7 @@ const Assessment: React.FC = () => {
                   <ArrowLeft className="h-4 w-4" />
                   Previous
                 </Button>
-
+                
                 {currentStep === totalSteps ? (
                   <Button
                     variant="water"
@@ -526,7 +556,9 @@ const Assessment: React.FC = () => {
               </div>
             </div>
 
+            {/* Sidebar */}
             <div className="space-y-6">
+              {/* Water Tank Progress Visualization (at top) */}
               <Card className="glass-card border-0 shadow-glow">
                 <CardHeader className="text-center">
                   <CardTitle className="text-lg flex items-center justify-center gap-2">
@@ -537,12 +569,13 @@ const Assessment: React.FC = () => {
                 <CardContent className="flex flex-col items-center space-y-4">
                   <WaterTank progress={formCompletion} />
                   <p className="text-sm text-center text-muted-foreground">
-                    Your form is {Math.round(formCompletion)}% complete.&nbsp;
+                    Your form is {Math.round(formCompletion)}% complete. 
                     Fill in more details to improve accuracy.
                   </p>
                 </CardContent>
               </Card>
 
+              {/* Quick Tips below tank */}
               <Card className="glass-card border-0">
                 <CardHeader>
                   <CardTitle className="text-lg">Quick Tips</CardTitle>
@@ -554,6 +587,7 @@ const Assessment: React.FC = () => {
                   <p>• Location helps auto-fetch local rainfall data.</p>
                 </CardContent>
               </Card>
+
             </div>
           </div>
         </div>
