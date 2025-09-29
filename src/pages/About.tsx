@@ -1,10 +1,96 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const About: React.FC = () => {
+  const [chatbotOpen, setChatbotOpen] = useState(false);
+
+  const chatbotStyles = `
+    #jal-chat-fab {
+      position: fixed;
+      bottom: 40px;
+      right: 20px;
+      width: 64px;
+      height: 64px;
+      z-index: 9999;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 50%;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.24);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 2rem;
+      transition: transform 0.2s ease-in-out;
+    }
+    #jal-chat-fab:hover {
+      transform: scale(1.1);
+    }
+    #jal-chat-iframe-wrapper {
+      display: ${chatbotOpen ? 'block' : 'none'};
+      position: fixed;
+      bottom: 120px;
+      right: 20px;
+      z-index: 10000;
+    }
+    #jal-chat-iframe {
+      width: 400px;
+      height: 600px;
+      border: none;
+      border-radius: 18px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+      background: white;
+    }
+    #close-btn {
+      text-align: right;
+      margin-top: 8px;
+    }
+    #close-btn button {
+      background:#ef4444;
+      color:white;
+      border:none;
+      border-radius:6px;
+      padding: 6px 14px;
+      font-weight:bold;
+      cursor:pointer;
+      transition: background-color 0.2s ease;
+    }
+    #close-btn button:hover {
+      background: #dc2626;
+    }
+  `;
+
   return (
     <div className="min-h-screen bg-gradient-sky">
+      {/* Chatbot styles */}
+      <style>{chatbotStyles}</style>
+
+      {/* Chatbot Floating Action Button */}
+      {!chatbotOpen && (
+        <div
+          id="jal-chat-fab"
+          onClick={() => setChatbotOpen(true)}
+          title="Chat with Jal Rakshak AI"
+        >
+          🤖
+        </div>
+      )}
+
+      {/* Chatbot iframe popup */}
+      {chatbotOpen && (
+        <div id="jal-chat-iframe-wrapper">
+          <iframe
+            id="jal-chat-iframe"
+            src="https://jal-rakshak-ai-v3.vercel.app/"
+            title="Jal Rakshak AI Chatbot"
+          />
+          <div id="close-btn">
+            <button onClick={() => setChatbotOpen(false)}>Close</button>
+          </div>
+        </div>
+      )}
+
       <Navbar />
       <div className="pt-20 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -103,7 +189,7 @@ const About: React.FC = () => {
           {/* Footer */}
           <div className="text-center text-xs text-muted-foreground pt-2">
             <p>Developed for sustainable water management | © 2023 Central Ground Water Board (CGWB)</p>
-            <p>For technical support: support@rwhindia.org | Phone: +91-XXX-XXXX-XXXX</p>
+            <p>For technical support: <a href="mailto:support@rwhindia.org" className="underline">support@rwhindia.org</a> | Phone: +91-XXX-XXXX-XXXX</p>
           </div>
         </div>
       </div>
