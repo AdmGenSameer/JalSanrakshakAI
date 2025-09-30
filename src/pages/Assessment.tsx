@@ -18,12 +18,18 @@ import {
   ArrowLeft,
   ExternalLink,
   Droplets,
-  Loader2
+  Loader2,
+  MessageCircle,
+  X,
+  Send,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import WaterTank from '@/components/WaterTank';
 import Navbar from '@/components/Navbar';
 import MapLocator from '@/components/MapLocator';
 import { useToast } from '@/components/ui/use-toast';
+import { api } from '@/lib/api';
 
 interface FormData {
   name: string;
@@ -38,8 +44,182 @@ interface FormData {
   longitude: number | null;
 }
 
+interface ChatMessage {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+}
+
 const Assessment: React.FC = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Chatbot state
+  const [chatbotOpen, setChatbotOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      content: "Hello! 🌧 I'm here to assist you with your rainwater harvesting assessment. I can help you understand the form fields, calculate measurements, or answer questions about the assessment process. What would you like to know?",
+      isUser: false,
+      timestamp: new Date()
+    }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Check if TTS is supported
+  const isTtsSupported = () => {
+    return 'speechSynthesis' in window;
+  };
+
+  // Speak text using TTS
+  const speakText = (text: string) => {
+    if (!ttsEnabled || !isTtsSupported()) return;
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 0.8;
+
+    // Select a voice (prefer female voices for better clarity)
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice => 
+      voice.name.includes('Female') || voice.name.includes('Google UK English Female')
+    ) || voices[0];
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Stop TTS
+  const stopTts = () => {
+    if (isTtsSupported()) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  // Toggle TTS
+  const toggleTts = () => {
+    if (ttsEnabled) {
+      stopTts();
+    }
+    setTtsEnabled(!ttsEnabled);
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: inputMessage.trim(),
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+
+    // Simulate AI response (replace with actual API call)
+    setTimeout(() => {
+      const aiResponse = getAIResponse(inputMessage.trim());
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: aiResponse,
+        isUser: false,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      setIsLoading(false);
+
+      // Speak the AI response if TTS is enabled
+      if (ttsEnabled) {
+        speakText(aiResponse);
+      }
+    }, 1000);
+  };
+
+  const getAIResponse = (userMessage: string): string => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+      return "Hello! I'm your assessment assistant. I can help you fill out this form, understand the questions, or calculate your rainwater harvesting potential. What do you need help with?";
+    }
+    
+    if (lowerMessage.includes('name') || lowerMessage.includes('full name')) {
+      return "The 'Full Name' field is for the primary contact person. This helps us personalize your assessment report. You can enter your complete name as you'd like it to appear on the report.";
+    }
+    
+    if (lowerMessage.includes('dweller') || lowerMessage.includes('people') || lowerMessage.includes('family')) {
+      return "Number of dwellers means how many people live in your house. This helps calculate your daily water consumption and determine the optimal tank size for your needs.";
+    }
+    
+    if (lowerMessage.includes('location') || lowerMessage.includes('address') || lowerMessage.includes('map')) {
+      return "Your location helps us fetch local rainfall data and climate information. Use the 'View on Map' button to verify your coordinates. Accurate location ensures precise water harvesting calculations.";
+    }
+    
+    if (lowerMessage.includes('roof area') || lowerMessage.includes('roof') || lowerMessage.includes('measure')) {
+      return "Roof area is the total surface area that collects rainwater. Use Google Earth's ruler tool (click 'Measure on Google Earth') or estimate based on your house dimensions. Average Indian homes have 80-150 sqm roof area.";
+    }
+    
+    if (lowerMessage.includes('open space') || lowerMessage.includes('space') || lowerMessage.includes('area')) {
+      return "Open space is where you can install rainwater harvesting components like storage tanks, filters, and recharge pits. This helps us design a system that fits your available area.";
+    }
+    
+    if (lowerMessage.includes('roof type') || lowerMessage.includes('concrete') || lowerMessage.includes('tiled')) {
+      return "Different roof materials have different water collection efficiencies. Concrete (90%), Tiled (85%), Metal (95%), Asbestos (80%), Thatched (70%). Choose the material that matches your roof.";
+    }
+    
+    if (lowerMessage.includes('roof age') || lowerMessage.includes('old') || lowerMessage.includes('year')) {
+      return "Roof age helps assess water quality. Newer roofs typically provide cleaner water. Older roofs might need additional filtration. This ensures we recommend the right treatment system.";
+    }
+    
+    if (lowerMessage.includes('calculate') || lowerMessage.includes('potential') || lowerMessage.includes('save')) {
+      return "Based on roof area and local rainfall, we calculate: Harvestable water = Roof Area × Rainfall × Runoff Coefficient. A 100 sqm roof in 1000mm rainfall area can harvest ~75,000 liters annually!";
+    }
+    
+    if (lowerMessage.includes('cost') || lowerMessage.includes('price') || lowerMessage.includes('expensive')) {
+      return "System costs depend on roof area and tank size: ₹30,000-80,000. Payback period is typically 3-5 years through water bill savings. The assessment will give you exact cost estimates.";
+    }
+    
+    if (lowerMessage.includes('next') || lowerMessage.includes('step') || lowerMessage.includes('continue')) {
+      return "Click 'Next Step' to proceed through the form. You can always go back using 'Previous'. Take your time to provide accurate information for the best recommendations.";
+    }
+    
+    if (lowerMessage.includes('submit') || lowerMessage.includes('generate') || lowerMessage.includes('assessment')) {
+      return "After completing all steps, click 'Generate Assessment' to get your personalized report with water savings, system design, cost analysis, and installation guidance.";
+    }
+    
+    if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
+      return "You're welcome! I'm here to help you through the assessment. Every detail you provide helps create a more accurate rainwater harvesting plan for your home! 💧";
+    }
+
+    return "I can help you understand the assessment form fields, calculate your water harvesting potential, or explain how the system works. Could you tell me which part you need help with?";
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -48,10 +228,10 @@ const Assessment: React.FC = () => {
     roofArea: '',
     openSpace: '',
     roofType: '',
-  roofAge: '',
-  soilType: '',
-  latitude: null,
-  longitude: null
+    roofAge: '',
+    soilType: '',
+    latitude: null,
+    longitude: null
   });
 
   const totalSteps = 4;
@@ -77,8 +257,8 @@ const Assessment: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const { toast } = useToast();
   const [geoLoading, setGeoLoading] = useState(false);
+  const [showMapPreview, setShowMapPreview] = useState(false);
   const lastGeocodedRef = useRef<string>('');
 
   // Geocode helper using OpenStreetMap Nominatim (no API key required)
@@ -105,28 +285,39 @@ const Assessment: React.FC = () => {
     }
   }
 
-  // Debounce geocoding by 3 seconds after typing stops
+  // Hide map preview when the address changes from the last geocoded string
   useEffect(() => {
     const address = formData.location.trim();
-    if (!address || address === lastGeocodedRef.current) return;
-    setGeoLoading(true);
-    const t = setTimeout(async () => {
-      // ensure still the same address after debounce
-      if (address !== formData.location.trim()) return;
-      const result = await geocodeAddress(address);
-      if (result) {
-        setFormData(prev => ({ ...prev, latitude: result.lat, longitude: result.lng }));
-        lastGeocodedRef.current = address;
-  toast({ title: 'Coordinates detected', description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}` });
-      }
-      setGeoLoading(false);
-    }, 3000);
+    if (address !== lastGeocodedRef.current) {
+      setShowMapPreview(false);
+    }
+  }, [formData.location]);
 
-    return () => {
-      clearTimeout(t);
-      setGeoLoading(false);
-    };
-  }, [formData.location, toast]);
+  // On-demand geocoding when user clicks the button
+  const handleViewOnMap = async () => {
+    const address = formData.location.trim();
+    if (!address) return;
+    // If we already have coords for this exact address, just show the map
+    if (
+      formData.latitude != null &&
+      formData.longitude != null &&
+      lastGeocodedRef.current === address
+    ) {
+      setShowMapPreview(true);
+      return;
+    }
+    setGeoLoading(true);
+    const result = await geocodeAddress(address);
+    setGeoLoading(false);
+    if (result) {
+      setFormData(prev => ({ ...prev, latitude: result.lat, longitude: result.lng }));
+      lastGeocodedRef.current = address;
+      setShowMapPreview(true);
+      toast({ title: 'Location found', description: `${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}` });
+    } else {
+      toast({ title: 'Location not found', description: 'Please refine the address and try again.', variant: 'destructive' });
+    }
+  };
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -140,18 +331,38 @@ const Assessment: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
-    // Here you would typically submit to your API
-    console.log('Form submitted:', formData);
-    navigate('/results');
+  const handleSubmit = async () => {
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        dwellers: Number(formData.dwellers) || 0,
+        roof_area: Number(formData.roofArea) || 0,
+        open_space: Number(formData.openSpace) || 0,
+        roof_type: formData.roofType || 'concrete',
+        roof_age: Number(formData.roofAge) || 0,
+      };
+      const created = await api.createAssessment(payload);
+      navigate(`/results?id=${created.id}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Please try again later.';
+      console.error('Submit failed', e);
+      toast({ title: 'Submission failed', description: msg });
+    }
   };
 
   const generateGoogleEarthLink = () => {
+    // If we have precise coordinates, construct a direct "fly-to" URL so Earth centers and zooms in
     if (formData.latitude != null && formData.longitude != null) {
       const lat = formData.latitude.toFixed(6);
       const lng = formData.longitude.toFixed(6);
-      return `https://earth.google.com/web/search/${encodeURIComponent(`${lat}, ${lng}`)}`;
+      // Altitude in meters (lower = closer). 150m is a good rooftop-level view.
+      const altitude = 9000;
+      // Google Earth Web camera syntax: @lat,lng,altitude"a",0d,0h,0t,0r
+      // a=altitude, d=distance? (kept 0), h=heading, t=tilt, r=roll — zeros keep a top-down north-facing view
+      return `https://earth.google.com/web/@${lat},${lng},${altitude}a,0d,0h,0t,0r`;
     }
+    // Otherwise, fall back to a text search
     if (formData.location) {
       const encodedLocation = encodeURIComponent(formData.location);
       return `https://earth.google.com/web/search/${encodedLocation}`;
@@ -213,7 +424,24 @@ const Assessment: React.FC = () => {
                   rows={3}
                 />
                 
-                {formData.latitude != null && formData.longitude != null && (
+                <div className="pt-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="water"
+                    size="sm"
+                    onClick={handleViewOnMap}
+                    disabled={!formData.location.trim() || geoLoading}
+                    className="inline-flex items-center gap-2"
+                  >
+                    {geoLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    View on Map
+                  </Button>
+                  {!formData.location.trim() && (
+                    <span className="text-xs text-muted-foreground">Enter an address to enable</span>
+                  )}
+                </div>
+
+                {showMapPreview && formData.latitude != null && formData.longitude != null && (
                   <div className="pt-2">
                     <MapLocator
                       height={220}
@@ -382,6 +610,122 @@ const Assessment: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-sky">
+      {/* Chatbot FAB */}
+      {!chatbotOpen && (
+        <button
+          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center cursor-pointer z-50 hover:scale-110 transition-transform duration-200"
+          onClick={() => setChatbotOpen(true)}
+          title="Chat with Assessment Assistant"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Chatbot Modal */}
+      {chatbotOpen && (
+        <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-white rounded-2xl shadow-2xl z-50 flex flex-col border border-gray-200">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-2xl flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold">Assessment Assistant</h3>
+              <p className="text-blue-100 text-sm">Get Help with Form Fields</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* TTS Toggle Button */}
+              {isTtsSupported() && (
+                <button
+                  onClick={toggleTts}
+                  className={`p-2 rounded-full transition-colors ${
+                    ttsEnabled 
+                      ? 'bg-green-500 text-white hover:bg-green-600' 
+                      : 'bg-white/20 text-white hover:bg-white/30'
+                  }`}
+                  title={ttsEnabled ? "Disable Text-to-Speech" : "Enable Text-to-Speech"}
+                >
+                  {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  stopTts();
+                  setChatbotOpen(false);
+                }}
+                className="text-white hover:bg-blue-700 rounded-full p-1 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                    message.isUser
+                      ? 'bg-blue-600 text-white rounded-br-none'
+                      : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
+                  }`}
+                >
+                  <p className="text-sm">{message.content}</p>
+                  <p className={`text-xs mt-1 ${message.isUser ? 'text-blue-200' : 'text-gray-500'}`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-none px-4 py-2">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="p-4 border-t border-gray-200 bg-white rounded-b-2xl">
+            <div className="flex space-x-2">
+              <Input
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask about form fields..."
+                className="flex-1"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputMessage.trim() || isLoading}
+                className="bg-blue-600 hover:bg-blue-700"
+                size="icon"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-gray-500">
+                Ask about form fields and calculations
+              </p>
+              {isTtsSupported() && (
+                <p className="text-xs text-gray-500">
+                  TTS: {ttsEnabled ? 'ON' : 'OFF'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Navbar />
       
       <div className="pt-20 pb-16">

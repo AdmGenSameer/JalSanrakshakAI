@@ -31,7 +31,8 @@ function FlyTo({ center }: { center: LatLngExpression | null }) {
   const map = useMap();
   useEffect(() => {
     if (center) {
-      map.flyTo(center, Math.max(map.getZoom(), 16), { duration: 1.2 });
+      // Use instant setView without animation for perceived zero load time
+      map.setView(center, Math.max(map.getZoom(), 16), { animate: false });
     }
   }, [center, map]);
   return null;
@@ -117,10 +118,23 @@ const MapLocator: React.FC<MapLocatorProps> = ({
             center={displayPosition || [20.5937, 78.9629]}
             zoom={displayPosition ? 16 : 5}
             scrollWheelZoom={false}
+            preferCanvas={true}
+            zoomAnimation={false}
+            fadeAnimation={false}
+            markerZoomAnimation={false}
             style={{ height }}
             whenCreated={(map) => (mapRef.current = map)}
           >
-            <AnyTileLayer attribution={EsriWorldImagery.attribution} url={EsriWorldImagery.url} />
+            <AnyTileLayer
+              attribution={EsriWorldImagery.attribution}
+              url={EsriWorldImagery.url}
+              // Tune tile rendering to paint faster and reduce work during interactions
+              updateWhenZooming={false}
+              updateWhenIdle={true}
+              keepBuffer={0}
+              tileSize={256}
+              detectRetina={false}
+            />
             <FlyTo center={displayPosition} />
             {interactive && (
               <ClickToSet

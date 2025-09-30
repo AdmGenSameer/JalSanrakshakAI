@@ -15,11 +15,11 @@ const Navbar: React.FC = () => {
           <Link to="/" className="flex items-center space-x-2 group">
             <img 
               src={waterIcon} 
-              alt="JalRakshak AI" 
+              alt="JalSanrakshak AI" 
               className="h-8 w-8 transition-transform group-hover:scale-110" 
             />
             <span className="text-xl font-bold bg-gradient-water bg-clip-text text-transparent">
-              JalRakshak AI
+              JalSanrakshak AI
             </span>
           </Link>
 
@@ -43,10 +43,12 @@ const Navbar: React.FC = () => {
             >
               About
             </Link>
+            <Link to="/assessment">
             <Button variant="water" size="sm">
               <Droplets className="w-4 h-4" />
               Start Assessment
             </Button>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
